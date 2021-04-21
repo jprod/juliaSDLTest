@@ -1,0 +1,5 @@
+[deps]
+Blobs = "163b9779-6631-5f90-a265-3de947924de8"
+Debugger = "31a5f54b-26ea-5ae9-a837-f05ce5417438"
+Match = "7eb4fadd-790c-5f42-8a69-bfa0b872bfbf"
+SimpleDirectMediaLayer = "98e33af6-2ee5-5afd-9e75-cbc738b767c4"
