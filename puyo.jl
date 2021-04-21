@@ -23,7 +23,19 @@ struct Entity
   end
 end
 
-mutable struct Filler end
+mutable struct ALTWindow
+    win::Ptr{SDL2.Window}
+    renderer::Ptr{SDL2.Renderer}
+
+    function ALTWindow(w,h,wflags,rflags,title="SDL Window")
+        win = SDL2.CreateWindow(title, Int32(100), Int32(100), Int32(w), Int32(h), wflags)
+        SDL2.SetWindowResizable(win,true)
+
+        renderer = SDL2.CreateRenderer(win, Int32(-1), rflags)
+
+        new(win, renderer)
+    end
+end
 
 function initSDL()
   SDL2.GL_SetAttribute(SDL2.GL_MULTISAMPLEBUFFERS, 16)
@@ -31,11 +43,11 @@ function initSDL()
 
   SDL2.init()
 
-  rendererFlags::UInt32 = SDL2.RENDERER_ACCELERATED
-  windowFlags::UInt32 = SDL2.WINDOW_SHOWN
+  wFlags::UInt32 = SDL2.WINDOW_SHOWN | SDL2.WINDOW_INPUT_FOCUS
+  rFlags::UInt32 = SDL2.RENDERER_ACCELERATED
 
 
-  sdlwin = SDL2.SDLWindow(SCREEN_WIDTH,SCREEN_HEIGHT,"Puyo!")
+  sdlwin = ALTWindow(SCREEN_WIDTH,SCREEN_HEIGHT,wFlags,rFlags,"Puyo!")
 
   SDL2.IMG_Init(Int32(SDL2.IMG_INIT_PNG | SDL2.IMG_INIT_JPG))
 
@@ -58,7 +70,10 @@ function handleKey(event, gs)
   println("handling key")
   println(event.keysym.sym)
   @match event.keysym.sym begin
-    SDL2.SDLK_LEFT => (gs["rcSrcx"] = 192; gs["rcSpritex"] = get(gs, "rcSpritex", 500) - 5)
+    SDL2.SDLK_LEFT => (gs.theta -= 0.1)
+    SDL2.SDLK_RIGHT => (gs.theta += 0.1)
+    SDL2.SDLK_UP => (gs.theta += 0.1)
+    SDL2.SDLK_DOWN => (gs.theta -= 0.1)
   end
   println(gs)
 end
@@ -70,8 +85,8 @@ function handleWin(event, gs, sdlwin)
     SDL2.WINDOWEVENT_RESIZED => begin 
       w,h = Int32[-1],Int32[-1]
       SDL2.GetWindowSize(sdlwin.win, w,h)
-      gs["winwidth"] = w[]
-      gs["winheight"] = h[]
+      gs.winwidth = w[]
+      gs.winheight = h[]
       end
   end
   println(gs)
@@ -85,30 +100,42 @@ function loadTexture(ren, filename)
   tex
 end
 
-
+mutable struct Gamestate
+  winwidth
+  winheight
+  theta
+end
 
 function main()  
   sdlwin = initSDL()
 
   player = Entity(100, 100, loadTexture(sdlwin.renderer, "./circ/circ.png"))
 
-  gs = Dict("winwidth" => SCREEN_WIDTH, "winheight" => SCREEN_HEIGHT)
-  tick = 0
+  gs = Gamestate(SCREEN_WIDTH, SCREEN_HEIGHT, 0.0)
+  tock = SDL2.GetTicks()
 
+  x,y = 200, 500
+  alph = 1000
   while true
-    x,y = (500 + 5*tick) % gs["winwidth"], (500 + 20*tick) % gs["winheight"]
+    tick = SDL2.GetTicks()
+    dT = (tick - tock)/1000.0
+    x2 = x+cos(gs.theta)*alph*dT
+    y2 = y+sin(gs.theta)*alph*dT
+    x = x2 < -player.w ? x2+(player.w+gs.winwidth) : x2 > gs.winwidth ? x2-(player.w+gs.winwidth) : x2
+    y = y2 < -player.h ? y2+(player.h+gs.winheight) : y2 > gs.winheight ? y2-(player.h+gs.winheight) : y2
+    tock = tick
+
     SDL2.SetRenderDrawColor(sdlwin.renderer, 96, 128, 255, 255)
     SDL2.RenderClear(sdlwin.renderer)
 
     doInput(sdlwin, gs)
 
-    rect = SDL2.Rect(x,y,player.w,player.h)
+    rect = SDL2.Rect(floor(x),floor(y),player.w,player.h)
     SDL2.RenderCopy(sdlwin.renderer, player.texture, C_NULL, pointer_from_objref(rect))
 
     SDL2.RenderPresent(sdlwin.renderer)
 
-    tick += 1
-    # SDL2.Delay(UInt32(1))
+    # SDL2.Delay(UInt32(1600))
   end
 end
 
