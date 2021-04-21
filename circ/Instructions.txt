@@ -1,0 +1,1 @@
+Move puyo_aqua.dat to Steam\steamapps\common\PuyoPuyoTetris\data_steam\data\puyo\puyo2p
